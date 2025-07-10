@@ -1,0 +1,59 @@
+name: Laravel CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  laravel-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: jwtapi
+          POSTGRES_PASSWORD: jwtapi
+          POSTGRES_DB: jwtapi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+          extensions: mbstring, pdo_pgsql, bcmath
+          coverage: none
+
+      - name: Install dependencies
+        run: |
+          composer install --no-progress --no-suggest --prefer-dist
+
+      - name: Set up environment file
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run Migrations
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: jwtapi
+          DB_USERNAME: jwtapi
+          DB_PASSWORD: jwtapi
+        run: |
+          php artisan migrate --force
+
+      - name: Run Tests
+        run: php artisan test
