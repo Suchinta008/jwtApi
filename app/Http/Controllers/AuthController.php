@@ -44,7 +44,7 @@ class AuthController extends Controller
         $credentials = $request->only('email', 'password');
 
         try {
-            JWTAuth::factory()->setTTL(1);
+            JWTAuth::factory()->setTTL(15);
             $token = JWTAuth::attempt($credentials);
 
             if (!$token) {
@@ -56,7 +56,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $token,
-            'expires_in' => JWTAuth::factory()->getTTL() * 60 
+            'expires_in' => JWTAuth::factory()->getTTL() * 60
         ]);
     }
 
@@ -114,6 +114,11 @@ class AuthController extends Controller
                 return response()->json(['error' => 'User not found'], 404);
             }
 
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255',
+            ]);
+
             $user->update($request->only(['name', 'email']));
 
             return response()->json([
@@ -133,37 +138,70 @@ class AuthController extends Controller
         }
     }
 
+    // public function refreshToken()
+    // {
+    //     try {
+    //         $newToken = JWTAuth::setTTL(120)->parseToken()->refresh();
+
+    //         return response()->json([
+    //             'status' => true,
+    //             'message' => 'Token refreshed successfully',
+    //             'token' => $newToken,
+    //             'expires_in' => JWTAuth::factory()->getTTL() * 60
+    //         ]);
+
+    //     } catch (TokenExpiredException $e) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Token has expired and can no longer be refreshed'
+    //         ], 401);
+    //     } catch (TokenInvalidException $e) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Token is invalid'
+    //         ], 401);
+    //     } catch (JWTException $e) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'message' => 'Token is missing or could not be refreshed'
+    //         ], 401);
+    //     }
+    // }
+
+    //---------------------New Refresh Token Method---------------------
     public function refreshToken()
     {
         try {
-            $newToken = JWTAuth::parseToken()->refresh();
+            // Set token TTL to 120 minutes (2 hours)
+            JWTAuth::factory()->setTTL(120);
+
+            // Refresh the token
+            $newToken = JWTAuth::refresh(JWTAuth::getToken());
 
             return response()->json([
                 'status' => true,
                 'message' => 'Token refreshed successfully',
                 'token' => $newToken,
-                'expires_in' => JWTAuth::factory()->getTTL() * 60
+                'expires_in' => JWTAuth::factory()->getTTL() * 60 // in seconds
             ]);
 
         } catch (TokenExpiredException $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Token has expired and can no longer be refreshed'
+                'message' => 'Token expired'
             ], 401);
         } catch (TokenInvalidException $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Token is invalid'
+                'message' => 'Token invalid'
             ], 401);
         } catch (JWTException $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Token is missing or could not be refreshed'
+                'message' => 'Token missing'
             ], 401);
         }
     }
 
-    public function test(){
-        return abort(400);
-    }
+
 }
